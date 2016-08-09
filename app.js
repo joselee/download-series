@@ -2,10 +2,16 @@
 let http = require('http');
 let fs = require('fs');
 let ProgressBar = require('progress');
-var express = require('express');
-var bodyParser = require('body-parser');
-var app = express();
+let express = require('express');
+let bodyParser = require('body-parser');
+let app = express();
 let list = [];
+let currentDownload = {
+    total: 0,
+    progress: 0,
+    active: false
+};
+
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -14,8 +20,12 @@ app.get('/downloadqueue', (req, res) => {
     res.json(list);
 });
 app.post('/downloadqueue', (req, res) => {
-    list.push(req.body.item);
+    let fileName = getFileName(req.body.item);
+    list.push({fileName: fileName, url: req.body.item.url});
     res.json(list);
+});
+app.get('/currentdownload', (req, res) => {
+    res.json(currentDownload);
 });
 
 app.listen(8080, function () {
@@ -23,14 +33,19 @@ app.listen(8080, function () {
 });
 
 function getFileName(listItem) {
-    if (typeof listItem === 'string') {
-        let pathParts = listItem.split('/');
+    if (listItem.fileName) {
+        return listItem.fileName;
+    } else {
+        let pathParts = listItem.url.split('/');
         let last = pathParts[pathParts.length - 1];
         return decodeURIComponent(last);
     }
-    if (typeof listItem === 'object' && listItem.hasOwnProperty('fileName')) {
-        return listItem.fileName;
-    }
+}
+
+function clearCurrentDownload() {
+    currentDownload.total = 0;
+    currentDownload.progress = 0;
+    currentDownload.active = false;
 }
 
 function download() {
@@ -41,31 +56,30 @@ function download() {
         return false;
     }
 
-    let request = http.get(list[0].url, (response) => {
-        let listItem = list[0];
-        let fileName = getFileName(listItem);
-        console.log('\nDownloading "' + fileName + '":');
-
-        let file = fs.createWriteStream(fileName);
+    let listItem = list[0];
+    let request = http.get(listItem.url, (response) => {
+        console.log('\nDownloading "' + listItem.fileName + '":');
+        let file = fs.createWriteStream(listItem.fileName);
         response.pipe(file);
 
-        let total = parseInt(response.headers['content-length'], 10);
-        let totalProgress = 0;
+        currentDownload.active = true;
+        currentDownload.total = parseInt(response.headers['content-length'], 10);
+        currentDownload.progress = 0;
 
         let bar = new ProgressBar('    [:bar] :percent :numeric', {
             complete: '-',
             incomplete: ' ',
             width: 50,
-            total: total
+            total: currentDownload.total
         });
 
         let intervalChunks = 0;
         response.on('data', function (chunk) {
             intervalChunks += chunk.length;
-            totalProgress += chunk.length;
+            currentDownload.progress += chunk.length;
         });
         let tick = setInterval(() => {
-            let numeric = (totalProgress / 1048576).toFixed(2) + 'MB/' + (total / 1048576).toFixed(2) + 'MB';
+            let numeric = (currentDownload.progress / 1048576).toFixed(2) + 'MB/' + (currentDownload.total / 1048576).toFixed(2) + 'MB';
             bar.tick(intervalChunks, { 'numeric': numeric });
             intervalChunks = 0;
         }, 500);
@@ -73,6 +87,7 @@ function download() {
         response.on('end', () => {
             clearInterval(tick);
             list.shift();
+            clearCurrentDownload();
             download();
         });
     });
