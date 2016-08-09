@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+    <head>
+        <link rel="stylesheet" href="css/bootstrap.min.css">
+        <link rel="stylesheet" href="css/styles.css">
+        <script src="js/angular.min.js"></script>
+        <script src="js/script.js"></script>
+    </head>
+    <body ng-app="myApp" ng-strict-di>
+        <div id="content" ng-controller="myCtrl as ctrl">
+            <ul>
+                <li ng-repeat="item in ctrl.queue track by $index">
+                    {{item.fileName}}
+                </li>
+            </ul>
+            <div ng-form="addForm">
+                <label for="fileName">File name</label>
+                <input type="text" id="fileName" ng-model="ctrl.addFileName" />
+                <label for="url">URL*</label>
+                <input type="text" id="url" ng-model="ctrl.addFileURL" />
+                <button class="btn btn-primary" ng-click="ctrl.add()">Add to queue</button>
+            </div>
+        </div>
+    </body>
+</html>
