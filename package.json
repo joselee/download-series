@@ -5,6 +5,7 @@
   "main": "app.js",
   "dependencies": {
     "body-parser": "^1.15.2",
+    "express": "^4.14.0",
     "progress": "^1.1.8"
   },
   "devDependencies": {},
