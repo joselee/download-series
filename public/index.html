@@ -10,12 +10,22 @@
     <body ng-app="myApp" ng-strict-di>
         <div id="content" ng-controller="myCtrl as ctrl">
             <div class="panel">
-                <label for="fileName">File name</label>
-                <input type="text" id="fileName" ng-model="ctrl.addFileName" />
-                <label for="url">URL*</label>
-                <input type="text" id="url" ng-model="ctrl.addFileURL" />
-                <button class="btn btn-primary" ng-click="ctrl.add()">Add to queue</button>
-                <button class="btn btn-primary" ng-click="ctrl.testAdd()">Start 50MB test download</button>
+                <span class="input-mode-toggle">
+                    <span class="toggle-button" ng-class="{active: ctrl.inputMode === 'form'}" ng-click="ctrl.toggleInputMode('form')">form</span>
+                    <span class="toggle-button" ng-class="{active: ctrl.inputMode === 'json'}" ng-click="ctrl.toggleInputMode('json')">json</span>
+                </span>
+                <form ng-if="ctrl.inputMode === 'form'">
+                    <label for="fileName">File name</label>
+                    <input type="text" id="fileName" ng-model="ctrl.addFileName" />
+                    <label for="url">URL*</label>
+                    <input type="text" id="url" ng-model="ctrl.addFileURL" />
+                    <button class="btn btn-primary" ng-click="ctrl.add()">Add to queue</button>
+                </form>
+                <form ng-if="ctrl.inputMode === 'json'">
+                    <label for="json">json*</label>
+                    <textarea id="json" rows="10" ng-model="ctrl.json" placeholder='Format must be: [{"filename": "string", "url": "string"}]'></textarea>
+                    <button class="btn btn-primary" ng-click="ctrl.add()">Add to queue</button>
+                </form>
             </div>
             <div class="panel">
                 <div class="queue-item" ng-repeat="item in ctrl.queue track by $index" ng-if="ctrl.queue.length > 0">

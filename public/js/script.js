@@ -1,4 +1,5 @@
 'use strict';
+// test download file http://download.thinkbroadband.com/50MB.zip
 let app = angular.module('myApp', []);
 app.factory('downloadQueueService', ['$http', function ($http) {
     return {
@@ -19,15 +20,20 @@ app.controller('myCtrl', ['downloadQueueService', '$timeout', function (download
         this.queue = res.data;
     });
 
+    this.json = '';
     this.addFileName = '';
     this.addFileURL = '';
     this.add = () => {
-        if (this.addFileURL) {
-            let item = { fileName: this.addFileName, url: this.addFileURL };
+        if (this.inputMode === 'form' && this.addFileURL) {
+            let item = [{ fileName: this.addFileName, url: this.addFileURL }];
             downloadQueueService.add(item).then((res) => {
-                this.queue = res.data;
-                this.addFileName = "";
-                this.addFileURL = "";
+                this.addFileName = '';
+                this.addFileURL = '';
+            });
+        } else if (this.inputMode === 'json' && this.json){
+            let json = JSON.parse(this.json);
+            downloadQueueService.add(json).then((res) => {
+                this.json = '';
             });
         }
     };
@@ -48,4 +54,9 @@ app.controller('myCtrl', ['downloadQueueService', '$timeout', function (download
             this.queue = data;
         });
     });
+
+    this.inputMode = 'form';
+    this.toggleInputMode = (mode) => {
+        this.inputMode = mode;
+    };
 }]);

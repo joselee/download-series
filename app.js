@@ -23,8 +23,10 @@ app.get('/downloadqueue', (req, res) => {
     res.json(list);
 });
 app.post('/downloadqueue', (req, res) => {
-    let fileName = getFileName(req.body.item);
-    list.push({ fileName: fileName, url: req.body.item.url });
+    for (let i = 0; i < req.body.item.length; i++) {
+        let fileName = getFileName(req.body.item[i]);
+        list.push({ fileName: fileName, url: req.body.item[i].url });
+    }
     broadcast('updateList', list);
     res.send('ok');
 });
@@ -37,6 +39,13 @@ io.on('connection', function (socket) {
 server.listen(8080, function () {
     console.log('Express running on port 8080');
 });
+
+function startNextDownload() {
+    list.shift();
+    clearCurrentDownload();
+    broadcast('updateList', list);
+    download();
+}
 
 function getFileName(listItem) {
     if (listItem.fileName) {
@@ -73,8 +82,6 @@ function download() {
     let listItem = list[0];
     let request = http.get(listItem.url, (response) => {
         console.log('\nDownloading "' + listItem.fileName + '":');
-        response.pipe(fs.createWriteStream(listItem.fileName));
-
         currentDownload.total = parseInt(response.headers['content-length'], 10);
         currentDownload.progress = 0;
         currentDownload.progressSinceLastInterval = 0;
@@ -92,6 +99,11 @@ function download() {
             currentDownload.progress += chunk.length;
         });
 
+        response.on('error', function () {
+            console.log('Download failed! Skipping to next in queue.');
+            startNextDownload();
+        });
+
         let tick = setInterval(() => {
             if (currentDownload.active) {
                 let numeric = (currentDownload.progress / 1048576).toFixed(2) + 'MB/' + (currentDownload.total / 1048576).toFixed(2) + 'MB';
@@ -103,13 +115,14 @@ function download() {
         }, 500);
 
         response.on('end', () => {
+            response.pipe(fs.createWriteStream(listItem.fileName));
             console.log('\n');
             clearInterval(tick);
-            list.shift();
-            clearCurrentDownload();
-            broadcast('updateList', list);
-            download();
+            startNextDownload();
         });
+    }).on('error', function () {
+        console.log('Download failed! Skipping to next in queue.');
+        startNextDownload();
     });
 }
 download();

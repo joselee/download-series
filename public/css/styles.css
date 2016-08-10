@@ -8,14 +8,19 @@ label {
     font-size: 0.9em;
     font-weight: lighter;
 }
-input {
+input, textarea {
     display: block;
     width: 100%;
+    max-width: 100%;
     min-height: 30px;
     border: solid 1px #999;
     border-radius: 3px;
     margin-bottom: 10px;
     padding-left: 10px;
+}
+textarea {
+    font-family: monospace;
+    font-size: 11px;
 }
 .btn {
     display: block;
@@ -23,12 +28,29 @@ input {
     margin: 25px auto 0;
 }
 .panel {
+    position: relative;
     max-width: 650px;
     margin: 10px auto 0;
     background: white;
     padding: 50px;
     border-radius: 3px;
     box-shadow: 2px 2px 2px rgba(0,0,0,0.25);
+}
+.input-mode-toggle {
+    display: block;
+    margin-bottom: 20px;
+}
+.toggle-button {
+    padding: 3px;
+    font-size: 10px;
+    color: #337ab7;
+    cursor: pointer;
+}
+.toggle-button:hover {
+    color: #63a0d4;
+}
+.toggle-button.active {
+    text-decoration: underline;
 }
 .progress-bar-container {
     margin-bottom: 10px;
