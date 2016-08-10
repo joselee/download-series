@@ -1,17 +1,20 @@
 'use strict';
 let http = require('http');
+let express = require('express');
+let app = express();
+let server = http.createServer(app);
+let io = require('socket.io')(server);
 let fs = require('fs');
 let ProgressBar = require('progress');
-let express = require('express');
 let bodyParser = require('body-parser');
-let app = express();
+
 let list = [];
 let currentDownload = {
     total: 0,
     progress: 0,
+    progressSinceLastInterval: 0,
     active: false
 };
-
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -21,14 +24,16 @@ app.get('/downloadqueue', (req, res) => {
 });
 app.post('/downloadqueue', (req, res) => {
     let fileName = getFileName(req.body.item);
-    list.push({fileName: fileName, url: req.body.item.url});
+    list.push({ fileName: fileName, url: req.body.item.url });
     res.json(list);
 });
-app.get('/currentdownload', (req, res) => {
-    res.json(currentDownload);
+
+let sockets = {};
+io.on('connection', function (socket) {
+    sockets[socket.id] = socket;
 });
 
-app.listen(8080, function () {
+server.listen(8080, function () {
     console.log('Express running on port 8080');
 });
 
@@ -45,26 +50,25 @@ function getFileName(listItem) {
 function clearCurrentDownload() {
     currentDownload.total = 0;
     currentDownload.progress = 0;
+    currentDownload.progressSinceLastInterval = 0;
     currentDownload.active = false;
 }
 
 function download() {
     if (list.length === 0) {
-        setTimeout(()=>{
-            download();
-        }, 5000);
+        setTimeout(download, 1000);
         return false;
     }
 
     let listItem = list[0];
     let request = http.get(listItem.url, (response) => {
         console.log('\nDownloading "' + listItem.fileName + '":');
-        let file = fs.createWriteStream(listItem.fileName);
-        response.pipe(file);
+        response.pipe(fs.createWriteStream(listItem.fileName));
 
-        currentDownload.active = true;
         currentDownload.total = parseInt(response.headers['content-length'], 10);
         currentDownload.progress = 0;
+        currentDownload.progressSinceLastInterval = 0;
+        currentDownload.active = true;
 
         let bar = new ProgressBar('    [:bar] :percent :numeric', {
             complete: '-',
@@ -73,18 +77,28 @@ function download() {
             total: currentDownload.total
         });
 
-        let intervalChunks = 0;
         response.on('data', function (chunk) {
-            intervalChunks += chunk.length;
+            currentDownload.progressSinceLastInterval += chunk.length;
             currentDownload.progress += chunk.length;
         });
+
         let tick = setInterval(() => {
-            let numeric = (currentDownload.progress / 1048576).toFixed(2) + 'MB/' + (currentDownload.total / 1048576).toFixed(2) + 'MB';
-            bar.tick(intervalChunks, { 'numeric': numeric });
-            intervalChunks = 0;
+            if(currentDownload.active){
+                let numeric = (currentDownload.progress / 1048576).toFixed(2) + 'MB/' + (currentDownload.total / 1048576).toFixed(2) + 'MB';
+                bar.tick(currentDownload.progressSinceLastInterval, { 'numeric': numeric });
+                currentDownload.progressSinceLastInterval = 0;
+
+                let socketIds = Object.keys(sockets);
+                for (let socketId in sockets) {
+                    if (sockets.hasOwnProperty(socketId)) {
+                        sockets[socketId].emit('currentDownload', {total: currentDownload.total, progress: currentDownload.progress});
+                    }
+                }
+            }
         }, 500);
 
         response.on('end', () => {
+            console.log('\n');
             clearInterval(tick);
             list.shift();
             clearCurrentDownload();

@@ -3,7 +3,7 @@
     <head>
         <link rel="stylesheet" href="css/bootstrap.min.css">
         <link rel="stylesheet" href="css/styles.css">
-        <script src="js/bootstrap.min.js"></script>
+        <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
         <script src="js/angular.min.js"></script>
         <script src="js/script.js"></script>
     </head>
@@ -15,6 +15,7 @@
                 <label for="url">URL*</label>
                 <input type="text" id="url" ng-model="ctrl.addFileURL" />
                 <button class="btn btn-primary" ng-click="ctrl.add()">Add to queue</button>
+                <button class="btn btn-primary" ng-click="ctrl.testAdd()">Start 50MB test download</button>
             </div>
             <div class="panel">
                 <div class="queue-item" ng-repeat="item in ctrl.queue track by $index" ng-if="ctrl.queue.length > 0">

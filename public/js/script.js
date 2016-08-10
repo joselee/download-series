@@ -10,13 +10,10 @@ app.factory('downloadQueueService', ['$http', function ($http) {
         },
         remove: () => {
             return $http.delete('/downloadqueue');
-        },
-        getCurrentDownloadInfo: () => {
-            return $http.get('/currentdownload');
         }
     };
 }]);
-app.controller('myCtrl', ['downloadQueueService', function (downloadQueueService) {
+app.controller('myCtrl', ['downloadQueueService', '$timeout', function (downloadQueueService, $timeout) {
     this.queue = [];
     downloadQueueService.get().then((res) => {
         this.queue = res.data;
@@ -34,13 +31,16 @@ app.controller('myCtrl', ['downloadQueueService', function (downloadQueueService
             });
         }
     };
+    this.testAdd = () => {
+        this.addFileURL = 'http://download.thinkbroadband.com/50MB.zip';
+        this.add();
+    }
 
     this.currentDownloadPercent = 0;
-    setInterval(() => {
-        downloadQueueService.getCurrentDownloadInfo().then((res) => {
-            if (res.data.progress && res.data.progress !== 0) {
-                this.currentDownloadPercent = (res.data.progress/res.data.total * 100).toFixed(2);
-            }
+    var socket = io();
+    socket.on('currentDownload', (data) => {
+        $timeout(()=>{
+            this.currentDownloadPercent = (data.progress/data.total * 100).toFixed(2);
         });
-    }, 1000);
+    });
 }]);
