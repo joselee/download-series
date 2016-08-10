@@ -114,8 +114,11 @@ function download() {
             }
         }, 500);
 
-        response.on('end', () => {
+        if(response.statusCode !== 400) {
             response.pipe(fs.createWriteStream(listItem.fileName));
+        }
+
+        response.on('end', () => {
             console.log('\n');
             clearInterval(tick);
             startNextDownload();
