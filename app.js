@@ -25,7 +25,8 @@ app.get('/downloadqueue', (req, res) => {
 app.post('/downloadqueue', (req, res) => {
     let fileName = getFileName(req.body.item);
     list.push({ fileName: fileName, url: req.body.item.url });
-    res.json(list);
+    broadcast('updateList', list);
+    res.send('ok');
 });
 
 let sockets = {};
@@ -52,6 +53,15 @@ function clearCurrentDownload() {
     currentDownload.progress = 0;
     currentDownload.progressSinceLastInterval = 0;
     currentDownload.active = false;
+}
+
+function broadcast(eventName, data) {
+    let socketIds = Object.keys(sockets);
+    for (let socketId in sockets) {
+        if (sockets.hasOwnProperty(socketId)) {
+            sockets[socketId].emit(eventName, data);
+        }
+    }
 }
 
 function download() {
@@ -83,17 +93,12 @@ function download() {
         });
 
         let tick = setInterval(() => {
-            if(currentDownload.active){
+            if (currentDownload.active) {
                 let numeric = (currentDownload.progress / 1048576).toFixed(2) + 'MB/' + (currentDownload.total / 1048576).toFixed(2) + 'MB';
                 bar.tick(currentDownload.progressSinceLastInterval, { 'numeric': numeric });
                 currentDownload.progressSinceLastInterval = 0;
 
-                let socketIds = Object.keys(sockets);
-                for (let socketId in sockets) {
-                    if (sockets.hasOwnProperty(socketId)) {
-                        sockets[socketId].emit('currentDownload', {total: currentDownload.total, progress: currentDownload.progress});
-                    }
-                }
+                broadcast('currentDownload', { total: currentDownload.total, progress: currentDownload.progress });
             }
         }, 500);
 
@@ -102,6 +107,7 @@ function download() {
             clearInterval(tick);
             list.shift();
             clearCurrentDownload();
+            broadcast('updateList', list);
             download();
         });
     });

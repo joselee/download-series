@@ -43,4 +43,9 @@ app.controller('myCtrl', ['downloadQueueService', '$timeout', function (download
             this.currentDownloadPercent = (data.progress/data.total * 100).toFixed(2);
         });
     });
+    socket.on('updateList', (data) => {
+        $timeout(()=>{
+            this.queue = data;
+        });
+    });
 }]);
